@@ -121,16 +121,19 @@ def write_content(docs_service, toc_document_id, requests):
     return result
 
 # find the max index and delete it
-def build_content_for_delete(doc, formatted_list):
-    requests = []
-    content = doc["body"]["content"]
+def build_content_for_delete(doc):
+    last_item = doc["body"]["content"][-1]['endIndex']
+    if (last_item == 2):
+        return []
 
-    # Print the content
-    for item in content:
-        if "paragraph" in item:
-            print(item["paragraph"]["elements"][0]["textRun"]["content"])
-
-    return requests
+    return {
+        "deleteContentRange": {
+            "range": {
+                "startIndex": 1,
+                "endIndex": last_item - 1,
+            }
+        }
+    },
 
 # {
 #     "insertText": {
@@ -211,17 +214,22 @@ def build_formatted_list(list):
             }
         )
 
+    print("-----------------" + str(start_index))
+    # append bullets
+    formatted_list.append(
+        {
+            "createParagraphBullets": {
+                "range": {"startIndex": 1, "endIndex": start_index},
+                "bulletPreset": "NUMBERED_DECIMAL_NESTED",
+            }
+        }
+    )
     return formatted_list
 
-
-# Search for files with specific names in a specific folder
-
 docs_service, drive_service = authorize()
-
-
-# doc = read_content(docs_service, toc_document_id)
-# print(doc)
-# requests = build_content(doc, formatted_list)
+doc = read_content_by_id(docs_service, toc_document_id)
+delete_request = build_content_for_delete(doc)
+print(delete_request)
 
 # OK ---
 list = []
@@ -235,14 +243,11 @@ scan_folders(
     list=list,
 )
 # print(list)
+
 formatted_list = build_formatted_list(list)
-formatted_list.append(
-    {
-        "createParagraphBullets": {
-            "range": {"startIndex": 1, "endIndex": 664},
-            "bulletPreset": "NUMBERED_DECIMAL_NESTED",
-        }
-    }
-)
 print(formatted_list)
+# delete the current content
+if delete_request:
+    write_content(docs_service, toc_document_id, requests=[delete_request])
+# populate new contents
 write_content(docs_service, toc_document_id, formatted_list)
