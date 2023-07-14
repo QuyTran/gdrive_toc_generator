@@ -1,6 +1,7 @@
 import os
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
+from googleapiclient.discovery import Resource
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 import configparser
@@ -20,13 +21,13 @@ folder_id = config["DEFAULT"]["root_folder_id"]
 #     'id'
 # }
 def scan_folders(
-    drive_service,
-    parent_name,
-    folder_id,
-    level
+    drive_service: Resource,
+    parent_name: str,
+    folder_id: str,
+    level: int
     #  , start_index
     ,
-    list,
+    list:list,
 ):
     global start_index
     query = f"'{folder_id}' in parents and trashed = false"
@@ -81,7 +82,7 @@ def scan_folders(
             break
 
 
-def authorize():
+def authorize() -> tuple[Resource,Resource]:
     SCOPES = [
         "https://www.googleapis.com/auth/drive",
         "https://www.googleapis.com/auth/drive.metadata.readonly",
@@ -111,12 +112,12 @@ def authorize():
     return docs_service, drive_service
 
 
-def read_content_by_id(docs_service, toc_document_id):
+def read_content_by_id(docs_service: Resource, toc_document_id: str) -> list:
     doc = docs_service.documents().get(documentId=toc_document_id).execute()
     return doc
 
 
-def write_content(docs_service, toc_document_id, requests):
+def write_content(docs_service: Resource, toc_document_id: str, requests: list) -> list:
     result = (
         docs_service.documents()
         .batchUpdate(documentId=toc_document_id, body={"requests": requests})
@@ -125,7 +126,7 @@ def write_content(docs_service, toc_document_id, requests):
     return result
 
 # find the max index and delete it
-def build_content_for_delete(doc):
+def build_content_for_delete(doc: list) ->list:
     last_item = doc["body"]["content"][-1]['endIndex']
     if (last_item == 2):
         return []
@@ -139,7 +140,7 @@ def build_content_for_delete(doc):
         }
     }]
 
-def build_content_for_update_style(doc):
+def build_content_for_update_style(doc: list) -> list:
     last_item = doc["body"]["content"][-1]['endIndex']
     if (last_item == 2):
         return []
@@ -202,7 +203,7 @@ def build_content_for_update_style(doc):
 #     },
 #     "fields": "link"
 # }
-def build_formatted_list(list):
+def build_formatted_list(list:list) -> list:
     formatted_list = []
     for item in list:
         formatted_list.append(
