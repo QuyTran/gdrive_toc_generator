@@ -38,7 +38,7 @@ def scan_folders(
             .list(
                 q=query,
                 spaces="drive",
-                fields="nextPageToken, " "files(id, name, kind, mimeType, webViewLink)",
+                fields="nextPageToken, " "files(id, name, kind, mimeType, webViewLink, owners)",
                 pageToken=page_token,
             )
             .execute()
@@ -48,7 +48,11 @@ def scan_folders(
             tabs = ""
             for i in range(0, level):
                 tabs += "\t"
-            file_name = tabs + file.get("name") + "\n"
+            list_of_owners = ""
+            for owner in file.get("owners"):
+                list_of_owners += owner["displayName"] + ", "
+
+            file_name = tabs + file.get("name") + " (" + list_of_owners[:len(list_of_owners)-2] + ")\n"
             end_index = len(file_name) + start_index
             list.append(
                 {
@@ -126,14 +130,44 @@ def build_content_for_delete(doc):
     if (last_item == 2):
         return []
 
-    return {
+    return [{
         "deleteContentRange": {
             "range": {
                 "startIndex": 1,
                 "endIndex": last_item - 1,
             }
         }
-    },
+    }]
+
+def build_content_for_update_style(doc):
+    last_item = doc["body"]["content"][-1]['endIndex']
+    if (last_item == 2):
+        return []
+
+    return [        
+        {
+            "updateTextStyle": {
+                "range": {
+                    "startIndex": 1,
+                    "endIndex": last_item - 1,
+                },
+                "textStyle": {
+                    "fontSize": {"magnitude": 12, "unit": "PT"},
+                    'weightedFontFamily': {
+                        'fontFamily': 'Times New Roman'
+                    },
+                    "foregroundColor": {
+                        "color": {
+                            "rgbColor": {"blue": 0.4, "green": 0.2, "red": 0.0}
+                        }
+                    },
+                },
+                "fields": "foregroundColor,fontSize, weightedFontFamily",
+            }
+        }
+    ]
+    
+    
 
 # {
 #     "insertText": {
@@ -187,7 +221,7 @@ def build_formatted_list(list):
                         "endIndex": item["end_index"],
                     },
                     "paragraphStyle": {
-                        "namedStyleType": "HEADING_" + str(item["heading"])
+                        "namedStyleType": "HEADING_" + ("6" if item["heading"] > 6 else str(item["heading"]))
                     },
                     "fields": "namedStyleType",
                 }
@@ -202,36 +236,34 @@ def build_formatted_list(list):
                     },
                     "textStyle": {
                         "link": {"url": item["link"]},
-                        "fontSize": {"magnitude": 10, "unit": "PT"},
-                        "foregroundColor": {
-                            "color": {
-                                "rgbColor": {"blue": 1.0, "green": 0.0, "red": 0.0}
-                            }
-                        },
+                        
                     },
-                    "fields": "link,foregroundColor,fontSize",
+                    "fields": "link",
                 }
             }
         )
 
-    print("-----------------" + str(start_index))
-    # append bullets
     formatted_list.append(
         {
             "createParagraphBullets": {
-                "range": {"startIndex": 1, "endIndex": start_index},
+                "range": {"startIndex": 1, "endIndex": item["end_index"] - 1},
                 "bulletPreset": "NUMBERED_DECIMAL_NESTED",
-            }
-        }
+            },
+        },    
     )
+
     return formatted_list
 
+print('1. Authorizing\n')
 docs_service, drive_service = authorize()
 doc = read_content_by_id(docs_service, toc_document_id)
-delete_request = build_content_for_delete(doc)
-print(delete_request)
 
-# OK ---
+print('2. Deleting the old content\n')
+delete_request = build_content_for_delete(doc)
+if delete_request:
+    write_content(docs_service, toc_document_id, requests=delete_request)
+
+print('3. Building content based on the root folder structure\n')
 list = []
 start_index = 1
 scan_folders(
@@ -242,12 +274,12 @@ scan_folders(
     # start_index=1,
     list=list,
 )
-# print(list)
 
 formatted_list = build_formatted_list(list)
-print(formatted_list)
-# delete the current content
-if delete_request:
-    write_content(docs_service, toc_document_id, requests=[delete_request])
-# populate new contents
 write_content(docs_service, toc_document_id, formatted_list)
+
+print('4. Updating file style')
+doc = read_content_by_id(docs_service=docs_service, toc_document_id=toc_document_id)
+updated_request = build_content_for_update_style(doc=doc)
+if updated_request:
+    write_content(docs_service, toc_document_id, requests=updated_request)
