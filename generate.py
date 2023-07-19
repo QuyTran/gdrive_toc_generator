@@ -31,6 +31,7 @@ def scan_folders(
 ):
     global start_index
     query = f"'{folder_id}' in parents and trashed = false"
+    #query = ''
     page_token = None
     while True:
         # pylint: disable=maybe-no-member
@@ -39,21 +40,25 @@ def scan_folders(
             .list(
                 q=query,
                 spaces="drive",
-                fields="nextPageToken, " "files(id, name, kind, mimeType, webViewLink, owners)",
+                supportsAllDrives="true",
+                includeItemsFromAllDrives="true",
+                fields="nextPageToken, " "files(id, name, kind, mimeType, webViewLink)",
                 pageToken=page_token,
             )
             .execute()
         )
+
         for file in response.get("files", []):
             # Process change
             tabs = ""
             for i in range(0, level):
                 tabs += "\t"
-            list_of_owners = ""
-            for owner in file.get("owners"):
-                list_of_owners += owner["displayName"] + ", "
+            # list_of_owners = ""
+            # if file.get("owners"):
+            #     for owner in file.get("owners"):
+            #         list_of_owners += owner["displayName"] + ", "
 
-            file_name = tabs + file.get("name") + " (" + list_of_owners[:len(list_of_owners)-2] + ")\n"
+            file_name = tabs + file.get("name")+ "\n"
             end_index = len(file_name) + start_index
             list.append(
                 {
@@ -85,7 +90,7 @@ def scan_folders(
 def authorize() -> tuple[Resource,Resource]:
     SCOPES = [
         "https://www.googleapis.com/auth/drive",
-        "https://www.googleapis.com/auth/drive.metadata.readonly",
+        # "https://www.googleapis.com/auth/drive.metadata.readonly",
     ]
 
     creds = None
