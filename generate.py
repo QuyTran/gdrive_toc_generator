@@ -92,6 +92,7 @@ def scan_folders(
                 }
             )
             start_index = end_index
+            # application/vnd.google-apps.folder and application/vnd.google-apps.shortcut
             if file.get("mimeType") == "application/vnd.google-apps.folder":
                 scan_folders(
                     drive_service,
