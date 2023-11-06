@@ -1,4 +1,5 @@
 import os
+import argparse
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.discovery import Resource
@@ -8,8 +9,27 @@ import configparser
 
 config = configparser.ConfigParser()
 config.read("config.ini")
-toc_document_id = config["DEFAULT"]["toc_document_id"]
-folder_id = config["DEFAULT"]["root_folder_id"]
+
+# Instantiate the parser and give it a description that will show before help
+parser = argparse.ArgumentParser(description='My Parser')
+
+# Add arguments to the parser
+parser.add_argument('--app', dest='app', type=str, help='application name')
+
+# Run method to parse the arguments
+args = parser.parse_args()
+
+# Print the result
+print (("Your application name is %s") % (args.app))
+
+
+if args.app == "" or args.app is None:
+   appName = "DEFAULT"
+else:
+   appName = args.app
+
+toc_document_id = config[appName]["toc_document_id"]
+folder_id = config[appName]["root_folder_id"]
 
 
 # {
