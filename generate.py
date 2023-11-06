@@ -79,6 +79,7 @@ def scan_folders(
             #         list_of_owners += owner["displayName"] + ", "
 
             file_name = tabs + file.get("name")+ "\n"
+            # file_name = tabs + file.get("name")
             end_index = len(file_name) + start_index
             list.append(
                 {
@@ -144,6 +145,7 @@ def read_content_by_id(docs_service: Resource, toc_document_id: str) -> list:
 
 
 def write_content(docs_service: Resource, toc_document_id: str, requests: list) -> list:
+    #print(requests)
     result = (
         docs_service.documents()
         .batchUpdate(documentId=toc_document_id, body={"requests": requests})
@@ -236,7 +238,8 @@ def build_formatted_list(list:list) -> list:
             {
                 "insertText": {
                     "text": item["name"],
-                    "location": {"index": item["start_index"]},
+                    'endOfSegmentLocation': {}
+                    # "location": {"index": item["start_index"]},
                 }
             }
         )
